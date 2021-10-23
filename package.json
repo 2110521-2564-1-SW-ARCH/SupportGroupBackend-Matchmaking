@@ -1,0 +1,25 @@
+{
+  "name": "supportgroupbackend-matchmaking",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2110521-2564-1-SW-ARCH/SupportGroupBackend-Matchmaking.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/2110521-2564-1-SW-ARCH/SupportGroupBackend-Matchmaking/issues"
+  },
+  "homepage": "https://github.com/2110521-2564-1-SW-ARCH/SupportGroupBackend-Matchmaking#readme",
+  "dependencies": {
+    "amqplib": "^0.8.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "socket.io": "^4.3.1"
+  }
+}
