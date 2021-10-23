@@ -18,6 +18,7 @@
   "homepage": "https://github.com/2110521-2564-1-SW-ARCH/SupportGroupBackend-Matchmaking#readme",
   "dependencies": {
     "amqplib": "^0.8.0",
+    "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "socket.io": "^4.3.1"
