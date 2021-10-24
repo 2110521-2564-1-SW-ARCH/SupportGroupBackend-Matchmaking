@@ -1,0 +1,8 @@
+FROM mysql
+
+ENV LANG C.UTF-8
+ENV character-set-server utf8
+ENV collation-server utf8_general_ci
+ENV MYSQL_ROOT_PASSWORD password
+
+COPY . /docker-entrypoint-initdb.d/.
