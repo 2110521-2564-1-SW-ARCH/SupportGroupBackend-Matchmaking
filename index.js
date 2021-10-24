@@ -45,6 +45,8 @@ const maxNumber = 2;
 // connect to mysql database
 database.Connect();
 
+// database.NewChatRoom(chatRoom) for insert new chat room information ( format for chatRoom object in database.js)
+
 amqp.connect("amqp://localhost", function (error0, connection) {
 	if (error0) {
 		throw error0;

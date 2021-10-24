@@ -1,7 +1,7 @@
 const mysql = require("mysql");
 const configs = require("./configs");
 
-class database {
+class Database {
 	constructor() {
 		this.connection = null;
 	}
@@ -24,7 +24,7 @@ class database {
     */
 	NewChatRoom(chatRoom) {
 		const query = this.connection.query(
-			"INSERT INTO chat SET ?",
+			"INSERT INTO chat_room SET ?",
 			chatRoom,
 			function (error, results, fields) {
 				if (error) throw error;
@@ -35,4 +35,4 @@ class database {
 	}
 }
 
-module.exports = new database();
+module.exports = new Database();
