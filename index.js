@@ -27,7 +27,12 @@ var queueSocket = socketIO.of("/queue");
 
 app.use(cors(corsOption));
 
-var msgPropertiesArray = [];
+var msgPropertiesArray = {};
+msgPropertiesArray["Life"] = [];
+msgPropertiesArray["Love"] = [];
+msgPropertiesArray["Work"] = [];
+msgPropertiesArray["Study"] = [];
+msgPropertiesArray["Other"] = [];
 
 function generateUuid() {
   return (
@@ -37,17 +42,17 @@ function generateUuid() {
   );
 }
 
+const maxNumber = 3;
+
 amqp.connect("amqp://localhost", function (error0, connection) {
-  let number = 0;
   if (error0) {
     throw error0;
   }
   connection.createChannel(function (error1, channel) {
-    console.log("channel 1")
     if (error1) {
       throw error1;
     }
-    var queue = "1";
+    var queue = "rpc_queue";
 
     channel.assertQueue(queue, {
       durable: false,
@@ -55,170 +60,86 @@ amqp.connect("amqp://localhost", function (error0, connection) {
     channel.prefetch(1);
     console.log(" [x] Awaiting RPC requests");
     channel.consume(queue, function reply(msg) {
-      number = number + 1;
+      msgPropertiesArray[msg.properties.correlationId].push(
+        msg.properties.replyTo
+      );
+      console.log("array", msgPropertiesArray);
 
-      // console.log(" [.] member (%d)", number, " channel ", queue);
-      msgPropertiesArray.push({
-        correlationId: msg.properties.correlationId,
-        replyTo: msg.properties.replyTo,
-      });
-
-      console.log(" [.] member (%d)", number, " channel ", queue);
-      console.log("queue length", msgPropertiesArray.length)
-
-      if (msgPropertiesArray.length == 3) {
-        for (const msgProperties of msgPropertiesArray) {
-          channel.sendToQueue(msgProperties.replyTo, Buffer.from("roomId"), {
-            correlationId: msgProperties.correlationId,
-          });
-        }
-        queueSocket.emit("queue", "roomID");
-        msgPropertiesArray = [];
-        number = 0;
+      if (
+        msgPropertiesArray[msg.properties.correlationId].length >= maxNumber
+      ) {
+        queueSocket.emit("queue", {
+          roomID: generateUuid(),
+          joinerList: msgPropertiesArray[msg.properties.correlationId],
+        });
+        msgPropertiesArray[msg.properties.correlationId] = [
+          ...msgPropertiesArray[msg.properties.correlationId].slice(
+            maxNumber,
+            msgPropertiesArray[msg.properties.correlationId].length
+          ),
+        ];
+        console.log(msgPropertiesArray);
       }
       channel.ack(msg);
     });
   });
-  // connection.createChannel(function (error1, channel) {
-  //   console.log("channel 2")
-  //   let number = 0;
-  //   if (error1) {
-  //     throw error1;
-  //   }
-  //   var queue = "2";
-
-  //   channel.assertQueue(queue, {
-  //     durable: false,
-  //   });
-  //   channel.prefetch(1);
-  //   console.log(" [x] Awaiting RPC requests");
-  //   channel.consume(queue, function reply(msg) {
-  //     number = number + 1;
-
-  //     // console.log(" [.] member (%d)", number, " channel ", queue);
-  //     // console.log("queue length", msgPropertiesArray.length)
-  //     msgPropertiesArray.push({
-  //       correlationId: msg.properties.correlationId,
-  //       replyTo: msg.properties.replyTo,
-  //     });
-
-  //     console.log(" [.] member (%d)", number, " channel ", queue);
-  //     console.log("queue length", msgPropertiesArray.length)
-
-  //     if (msgPropertiesArray.length == 3) {
-  //       for (const msgProperties of msgPropertiesArray) {
-  //         channel.sendToQueue(msgProperties.replyTo, Buffer.from("roomId"), {
-  //           correlationId: msgProperties.correlationId,
-  //         });
-  //       }
-  //       queueSocket.emit("queue", "roomID");
-  //       msgPropertiesArray = [];
-  //       number = 0;
-  //     }
-  //     channel.ack(msg);
-  //   });
-  // });
 });
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use("/api", router);
-router.route("/queue").post((req, res) => {
-  // console.log(req);
-  amqp.connect("amqp://localhost", function (error0, connection) {
-    if (error0) {
-      throw error0;
-    }
-    let queueName = req.body.category; // category name
-
-    connection.createChannel(function (error1, channel) {
-      if (error1) {
-        throw error1;
+router
+  .route("/queue")
+  .delete((req, res) => {
+    amqp.connect("amqp://localhost", function (error0, connection) {
+      if (error0) {
+        throw error0;
       }
-      channel.assertQueue(
-        "",
-        {
-          exclusive: true,
-          durable: true, // ป้องกัน ถ้า rabbit crash มันจะไม่ลืม queue
-        },
-        function (error2, q) {
-          if (error2) {
-            throw error2;
-          }
-          var correlationId = generateUuid();
+      const category = req.body.category;
+      const token = req.body.token;
 
-          console.log(" [x] Requesting ");
-
-          channel.consume(
-            q.queue,
-            function (msg) {
-              if (msg.properties.correlationId == correlationId) {
-                console.log(" [.] Got %s", msg.content.toString());
-              }
-            },
-            {
-              noAck: true,
-            }
-          );
-
-          channel.sendToQueue(queueName, Buffer.from(correlationId), {
-            correlationId: correlationId,
-            replyTo: q.queue,
-          });
-
-          // channel.sendToQueue("rpc_queue", Buffer.from(correlationId), {
-          //   correlationId: correlationId,
-          //   replyTo: q.queue,
-          // });
+      msgPropertiesArray[category] = msgPropertiesArray[category].filter(
+        (item) => {
+          return item !== token;
         }
       );
     });
+    res.json({ message: "completely delete member from lobby" });
+  })
+  .post((req, res) => {
+    amqp.connect("amqp://localhost", function (error0, connection) {
+      if (error0) {
+        throw error0;
+      }
+      const category = req.body.category;
+      const token = req.body.token;
+
+      connection.createChannel(function (error1, channel) {
+        if (error1) {
+          throw error1;
+        }
+        channel.assertQueue(
+          "",
+          {
+            exclusive: true,
+            durable: true, // ป้องกัน ถ้า rabbit crash มันจะไม่ลืม queue
+          },
+          function (error2, q) {
+            if (error2) {
+              throw error2;
+            }
+
+            console.log(" [x] Requesting ");
+
+            channel.sendToQueue("rpc_queue", Buffer.from(category), {
+              correlationId: category,
+              replyTo: token,
+            });
+          }
+        );
+      });
+    });
+    res.json({ message: "completely send member to lobby" });
   });
-  res.json({"message":"completely send member to lobby"});
-});
-// router.route("/queue").get((req, res) => {
-//   amqp.connect("amqp://localhost", function (error0, connection) {
-//     if (error0) {
-//       throw error0;
-//     }
-//     connection.createChannel(function (error1, channel) {
-//       if (error1) {
-//         throw error1;
-//       }
-//       channel.assertQueue(
-//         "",
-//         {
-//           exclusive: true,
-//         },
-//         function (error2, q) {
-//           if (error2) {
-//             throw error2;
-//           }
-//           var correlationId = generateUuid();
-
-//           console.log(" [x] Requesting ");
-
-//           channel.consume(
-//             q.queue,
-//             function (msg) {
-//               if (msg.properties.correlationId == correlationId) {
-//                 console.log(" [.] Got %s", msg.content.toString());
-//               }
-//             },
-//             {
-//               noAck: true,
-//             }
-//           );
-
-//           channel.sendToQueue("rpc_queue", Buffer.from(correlationId), {
-//             correlationId: correlationId,
-//             replyTo: q.queue,
-//           });
-//         }
-//       );
-//     });
-//   });
-//   res.send("hello");
-// });
 
 server.listen(5555, "0.0.0.0", () => {
   console.log("Running at localhost:5555");
