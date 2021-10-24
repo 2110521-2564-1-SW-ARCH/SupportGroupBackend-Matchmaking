@@ -19,11 +19,10 @@ var bodyParser = require("body-parser");
 
 var app = express();
 var router = express.Router();
-var server = require("http").Server(app);
+const http = require('http');
+const server = http.createServer(app);
 const cors = require("cors");
-var socketIO = require("socket.io")(server, { cors: corsOption });
-
-var queueSocket = socketIO.of("/queue");
+const io = require('socket.io')(server);
 
 app.use(cors(corsOption));
 
@@ -42,7 +41,7 @@ function generateUuid() {
   );
 }
 
-const maxNumber = 3;
+const maxNumber = 2;
 
 amqp.connect("amqp://localhost", function (error0, connection) {
   if (error0) {
@@ -68,7 +67,7 @@ amqp.connect("amqp://localhost", function (error0, connection) {
       if (
         msgPropertiesArray[msg.properties.correlationId].length >= maxNumber
       ) {
-        queueSocket.emit("queue", {
+        io.emit('queue', {
           roomID: generateUuid(),
           joinerList: msgPropertiesArray[msg.properties.correlationId],
         });
